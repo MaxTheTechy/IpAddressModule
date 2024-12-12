@@ -1,0 +1,86 @@
+const os = require("os");
+
+Module.register("IpAddressModule", {
+  defaults: {
+    showInternalIP: true,
+    showExternalIP: false,
+    updateInterval: 60000,
+  },
+
+
+
+
+  start: function () {
+    this.eth0IP = "Not Available";
+    this.wlan0IP = "Not Available";
+    this.errorMessage = null; // For error handling
+    this.getIPAddress(); // Initial retrieval
+    setInterval(() => {
+      this.getIPAddress();
+    }, this.config.updateInterval);
+  },
+
+  // Fetch IP addresses using os.networkInterfaces()
+  getIPAddress: function () {
+    try {
+      const networkInterfaces = os.networkInterfaces();
+
+      if (!networkInterfaces) {
+        this.errorMessage = "No network interfaces found.";
+        console.error("[IpAddressModule] No network interfaces returned.");
+        this.updateDom();
+        return;
+      }
+
+      console.log("[IpAddressModule] Network interfaces detected:", networkInterfaces);
+
+      // Reset IP values
+      this.eth0IP = "Not Available";
+      this.wlan0IP = "Not Available";
+      this.errorMessage = null; // Reset errors
+
+      for (const [interfaceName, addresses] of Object.entries(networkInterfaces)) {
+        addresses.forEach((address) => {
+          if (address.family === "IPv4" && !address.internal) {
+            if (interfaceName === "eth0") {
+              this.eth0IP = address.address;
+            } else if (interfaceName === "wlan0") {
+              this.wlan0IP = address.address;
+            }
+          }
+        });
+      }
+
+      // Debug logs for IPs
+      console.log(`[IpAddressModule] eth0 IP: ${this.eth0IP}`);
+      console.log(`[IpAddressModule] wlan0 IP: ${this.wlan0IP}`);
+
+    } catch (error) {
+      this.errorMessage = `Error fetching IP: ${error.message}`;
+      console.error("[IpAddressModule] Error while fetching IP addresses:", error);
+    }
+
+    this.updateDom(1000); // Update display after data retrieval
+  },
+
+  // Generate DOM for the module
+  getDom: function () {
+    const wrapper = document.createElement("div");
+    wrapper.className = "small bright";
+
+    if (this.errorMessage) {
+      // Display error message if present
+      wrapper.innerHTML = `
+        <div>Error: ${this.errorMessage}</div>
+      `;
+    } else {
+      // Display IP addresses
+      wrapper.innerHTML = `
+        <div>ETH0 IP: ${this.eth0IP}</div>
+        <div>WLAN0 IP: ${this.wlan0IP}</div>
+      `;
+    }
+
+    return wrapper;
+  }
+});

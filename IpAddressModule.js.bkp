@@ -1,0 +1,64 @@
+Module.register("IpAddressModule", {
+  // Default module config.
+  defaults: {
+    updateInterval: 300000 // Update every minute
+  },
+
+  // What happens when the module is loaded.
+  start: function () {
+    this.getIPAddress();
+    setInterval(() => {
+      this.getIPAddress();
+    }, this.config.updateInterval);
+  },
+
+  // Get IP addresses
+  getIPAddress: function () {
+    const { exec } = require("child_process");
+
+    exec("ip -4 addr show eth0 | grep 'inet ' | awk '{print $2}'", (error, stdout, stderr) => {
+      if (error) {
+        console.error(`exec error: ${error}`);
+        return;
+      }
+      this.eth0IP = stdout.trim();
+      this.displayIPAddress("eth0", this.eth0IP);
+    });
+
+    exec("ip -4 addr show wlan0 | grep 'inet ' | awk '{print $2}'", (error, stdout, stderr) => {
+      if (error) {
+        console.error(`exec error: ${error}`);
+        return;
+      }
+      this.wlan0IP = stdout.trim();
+      this.displayIPAddress("wlan0", this.wlan0IP);
+    });
+  },
+
+  // Display IP addresses on the screen
+  displayIPAddress: function (network, ip) {
+    this.updateDom(1000); // Update DOM with IP address
+    console.log(`Network: ${network} - IP: ${ip}`);
+  },
+
+  // Override dom generator.
+  getDom: function () {
+    const wrapper = document.createElement("div");
+    wrapper.className = "small bright";
+
+    // Check if IP addresses are loaded
+    if (!this.eth0IP || !this.wlan0IP) {
+      wrapper.innerHTML = `
+        <div>ETH0 IP: Loading...</div>
+        <div>WLAN0 IP: Loading...</div>
+      `;
+    } else {
+      wrapper.innerHTML = `
+        <div>ETH0 IP: ${this.eth0IP}</div>
+        <div>WLAN0 IP: ${this.wlan0IP}</div>
+      `;
+    }
+
+    return wrapper;
+  }
+});
